@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -12,8 +19,15 @@ class Joke {
   final String type;
   final String setup;
   final String punchline;
+  bool isFavorite;
 
-  Joke({required this.id, required this.type, required this.setup, required this.punchline});
+  Joke({
+    required this.id,
+    required this.type,
+    required this.setup,
+    required this.punchline,
+    this.isFavorite = false,
+  });
 
   factory Joke.fromJson(Map<String, dynamic> json) {
     return Joke(
@@ -21,6 +35,7 @@ class Joke {
       type: json['type'],
       setup: json['setup'],
       punchline: json['punchline'],
+      isFavorite: json['isFavorite'] ?? false,
     );
   }
 }
@@ -87,12 +102,27 @@ class MyApp extends StatelessWidget {
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  get jokes => null;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Joke Types 213029'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.favorite),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FavoriteJokesScreen(
+                    favoriteJokes: jokes.where((joke) => joke.isFavorite).toList(),
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.lightbulb),
             onPressed: () {
@@ -164,6 +194,16 @@ class JokeTypeScreen extends StatelessWidget {
                   child: ListTile(
                     title: Text(jokes[index].setup),
                     subtitle: Text(jokes[index].punchline),
+                    trailing: IconButton(
+                      icon: Icon(
+                        jokes[index].isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: jokes[index].isFavorite ? Colors.red : null,
+                      ),
+                      onPressed: () {
+                        jokes[index].isFavorite = !jokes[index].isFavorite;
+                        (context as Element).markNeedsBuild();
+                      },
+                    ),
                   ),
                 );
               },
@@ -206,6 +246,33 @@ class RandomJokeScreen extends StatelessWidget {
               ),
             );
           }
+        },
+      ),
+    );
+  }
+}
+
+// Екран: Омилени шеги
+class FavoriteJokesScreen extends StatelessWidget {
+  final List<Joke> favoriteJokes;
+
+  const FavoriteJokesScreen({super.key, required this.favoriteJokes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Favorite Jokes')),
+      body: favoriteJokes.isEmpty
+          ? const Center(child: Text('No favorite jokes yet!'))
+          : ListView.builder(
+        itemCount: favoriteJokes.length,
+        itemBuilder: (context, index) {
+          return Card(
+            child: ListTile(
+              title: Text(favoriteJokes[index].setup),
+              subtitle: Text(favoriteJokes[index].punchline),
+            ),
+          );
         },
       ),
     );
